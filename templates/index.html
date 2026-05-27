@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voz da Comunidade - Gerador de Conteúdo Jornalístico</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-section label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .char-counter {
+            font-size: 0.85rem;
+            color: #999;
+            font-weight: 400;
+        }
+
+        .char-counter.low {
+            color: #f59e0b;
+        }
+
+        .char-counter.error {
+            color: #ef4444;
+        }
+
+        .input-section textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s;
+        }
+
+        .input-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+            max-width: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-generate:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-generate .spinner-inline {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: white;
+            margin: 20px 0;
+            font-size: 1.1rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #f99;
+            border-radius: 8px;
+            padding: 15px;
+            color: #c00;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .card-content {
+            color: #333;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .card-content strong {
+            color: #222;
+        }
+
+        .card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .hashtags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .hashtag {
+            background: #f0f0f0;
+            color: #667eea;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .copy-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .copy-btn:hover {
+            background: #e0e0e0;
+            transform: scale(1.05);
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+            color: white;
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 30px 20px 20px;
+            font-size: 0.9rem;
+            margin-top: 40px;
+        }
+
+        footer p {
+            margin: 5px 0;
+        }
+
+        footer a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s;
+        }
+
+        footer a:hover {
+            border-bottom-color: white;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .input-section {
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn-generate,
+            .btn-clear {
+                max-width: none;
+            }
+
+            .results.active {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎤 Voz da Comunidade</h1>
+            <p>Transforme temas, acontecimentos e press releases em conteúdo jornalístico profissional com IA</p>
+        </header>
+
+        <div class="input-section">
+            <label for="input-text">
+                <span>Cole seu tema, acontecimento ou press release:</span>
+                <span class="char-counter" id="char-counter">0 caracteres</span>
+            </label>
+            <textarea 
+                id="input-text" 
+                placeholder="Ex: A comunidade X conquistou o prêmio de melhor projeto social do ano. Mais de 500 moradores participaram..."
+            ></textarea>
+            <div class="button-group">
+                <button class="btn-generate" id="btn-generate">Gerar Conteúdo</button>
+                <button class="btn-clear" id="btn-clear">Limpar</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <span class="spinner"></span>
+            Gerando conteúdo jornalístico...
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results">
+            <div class="card full-width">
+                <div class="card-title">📰 Manchete</div>
+                <div class="card-content" id="manchete"></div>
+                <button class="copy-btn" data-copy="manchete">Copiar</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">📋 Pauta</div>
+                <div class="card-content" id="pauta"></div>
+                <button class="copy-btn" data-copy="pauta">Copiar</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🔗 Redes Sociais</div>
+                <div class="card-content" id="social"></div>
+                <button class="copy-btn" data-copy="social">Copiar</button>
+            </div>
+
+            <div class="card full-width">
+                <div class="card-title">📄 Notícia Completa</div>
+                <div class="card-content" id="noticia"></div>
+                <button class="copy-btn" data-copy="noticia">Copiar</button>
+            </div>
+
+            <div class="card full-width">
+                <div class="card-title">🎬 Roteiro de Vídeo (Reels/Shorts)</div>
+                <div class="card-content" id="roteiro_video"></div>
+                <button class="copy-btn" data-copy="roteiro_video">Copiar</button>
+            </div>
+
+            <div class="card full-width">
+                <div class="card-title">🎤 Sugestões de Entrevista</div>
+                <div class="card-content" id="entrevista"></div>
+                <button class="copy-btn" data-copy="entrevista">Copiar</button>
+            </div>
+        </div>
+
+        <footer>
+            <p>🎤 <strong>Voz da Comunidade</strong> — Gerador de Conteúdo Jornalístico com IA</p>
+            <p>Desenvolvido com <span style="color: #ff6b6b;">❤</span> para jornalismo comunitário</p>
+        </footer>
+    </div>
+
+    <script>
+        const inputText = document.getElementById('input-text');
+        const btnGenerate = document.getElementById('btn-generate');
+        const btnClear = document.getElementById('btn-clear');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const charCounter = document.getElementById('char-counter');
+
+        // Contador de caracteres
+        inputText.addEventListener('input', () => {
+            const len = inputText.value.length;
+            charCounter.textContent = `${len} caracteres`;
+            
+            if (len < 10) {
+                charCounter.classList.add('error');
+                charCounter.classList.remove('low');
+            } else if (len < 50) {
+                charCounter.classList.add('low');
+                charCounter.classList.remove('error');
+            } else {
+                charCounter.classList.remove('low', 'error');
+            }
+        });
+
+        btnGenerate.addEventListener('click', async () => {
+            const text = inputText.value.trim();
+            
+            if (!text) {
+                showError('Digite um tema ou press release');
+                return;
+            }
+
+            if (text.length < 10) {
+                showError('O texto deve ter no mínimo 10 caracteres');
+                return;
+            }
+
+            await generateContent(text);
+        });
+
+        btnClear.addEventListener('click', () => {
+            inputText.value = '';
+            charCounter.textContent = '0 caracteres';
+            charCounter.classList.remove('low', 'error');
+            results.classList.remove('active');
+            error.classList.remove('active');
+            inputText.focus();
+        });
+
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const fieldId = this.dataset.copy;
+                const text = document.getElementById(fieldId).textContent;
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    this.textContent = '✓ Copiado!';
+                    this.classList.add('copied');
+                    setTimeout(() => {
+                        this.textContent = 'Copiar';
+                        this.classList.remove('copied');
+                    }, 2000);
+                });
+            });
+        });
+
+        async function generateContent(text) {
+            loading.classList.add('active');
+            error.classList.remove('active');
+            results.classList.remove('active');
+            btnGenerate.disabled = true;
+            
+            // Atualizar texto do botão para estado de loading
+            const originalText = btnGenerate.innerHTML;
+            btnGenerate.innerHTML = '<span class="spinner-inline"></span> Gerando...';
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ input: text })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Erro na geração');
+                }
+
+                const data = await response.json();
+                displayResults(data);
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                loading.classList.remove('active');
+                btnGenerate.disabled = false;
+                btnGenerate.innerHTML = originalText;
+            }
+        }
+
+        function displayResults(data) {
+            // Manchete
+            document.getElementById('manchete').textContent = data.manchete || '';
+            
+            // Pauta
+            document.getElementById('pauta').innerHTML = (data.pauta || '').replace(/\n/g, '<br>');
+            
+            // Notícia
+            document.getElementById('noticia').innerHTML = (data.noticia || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+            
+            // Social
+            document.getElementById('social').innerHTML = (data.social || '').replace(/\n/g, '<br>');
+            
+            // Roteiro de Vídeo
+            document.getElementById('roteiro_video').innerHTML = (data.roteiro_video || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
+            
+            // Entrevista
+            const entrevistas = (data.entrevista || '').split('\n').filter(q => q.trim());
+            if (entrevistas.length > 0) {
+                document.getElementById('entrevista').innerHTML = entrevistas
+                    .map((q, i) => `<strong>${i + 1}.</strong> ${q}`)
+                    .join('<br><br>');
+            } else {
+                document.getElementById('entrevista').textContent = data.entrevista || '';
+            }
+            
+            results.classList.add('active');
+            
+            // Scroll para resultados
+            setTimeout(() => {
+                results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('active');
+        }
+
+        // Focus no input ao carregar
+        inputText.focus();
+    </script>
+</body>
+</html>
