@@ -31,56 +31,59 @@ Regras:
 
 
 def generate_journalistic_content(theme_or_release: str) -> tuple[dict | None, str | None]:
-    """
-    Chama a OpenRouter API para gerar conteúdo jornalístico estruturado.
-    """
-    try:
-        api_key = os.getenv('OPENROUTER_API_KEY')
-        if not api_key:
-            return None, "Chave API do OpenRouter não configurada. Configure OPENROUTER_API_KEY em .env"
+    MAX_TENTATIVAS = 3  # ← tenta até 3 vezes
 
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=api_key,
-        )
+    for tentativa in range(1, MAX_TENTATIVAS + 1):
+        try:
+            api_key = os.getenv('OPENROUTER_API_KEY')
+            if not api_key:
+                return None, "Chave API do OpenRouter não configurada."
 
-        response = client.chat.completions.create(
-            model="deepseek/deepseek-v3.2",  # modelo gratuito
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Gere conteúdo jornalístico para: {theme_or_release}"}
-            ],
-            max_tokens=2048,
-            temperature=0.7,
-        )
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key,
+            )
 
-        resposta_texto = response.choices[0].message.content
+            response = client.chat.completions.create(
+                model="deepseek/deepseek-v3.2",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": f"Gere conteúdo jornalístico para: {theme_or_release}"}
+                ],
+                max_tokens=2048,
+                temperature=0.7,
+            )
 
-        if not resposta_texto:
-            return None, "OpenRouter retornou resposta vazia. Tente novamente."
+            resposta_texto = response.choices[0].message.content
 
-        result_json = _parse_json_response(resposta_texto)
+            if not resposta_texto:
+                continue  # tenta de novo
 
-        if result_json is None:
-            return None, "Não consegui processar a resposta da IA. Tente novamente com outro tema."
+            result_json = _parse_json_response(resposta_texto)
 
-        if not _validate_json_structure(result_json):
-            return None, "Resposta da IA está incompleta. Campos obrigatórios faltando."
+            if result_json is None:
+                print(f"Tentativa {tentativa}: JSON inválido, tentando novamente...")
+                continue  # tenta de novo
 
-        return result_json, None
+            if not _validate_json_structure(result_json):
+                print(f"Tentativa {tentativa}: estrutura incompleta, tentando novamente...")
+                continue  # tenta de novo
 
-    except Exception as e:
-        traceback.print_exc()
-        error_msg = str(e).lower()
+            return result_json, None  # ✅ sucesso
 
-        if "401" in error_msg or "unauthorized" in error_msg:
-            return None, "Chave API inválida. Verifique sua OPENROUTER_API_KEY."
-        elif "429" in error_msg or "rate limit" in error_msg:
-            return None, "Limite de requisições atingido. Aguarde alguns minutos."
-        elif "connection" in error_msg or "timeout" in error_msg:
-            return None, "Erro de conexão. Verifique sua internet."
-        else:
-            return None, f"Erro inesperado: {str(e)}"
+        except Exception as e:
+            traceback.print_exc()
+            error_msg = str(e).lower()
+            if "401" in error_msg or "unauthorized" in error_msg:
+                return None, "Chave API inválida. Verifique sua OPENROUTER_API_KEY."
+            elif "429" in error_msg or "rate limit" in error_msg:
+                return None, "Limite de requisições atingido. Aguarde alguns minutos."
+            elif "connection" in error_msg or "timeout" in error_msg:
+                return None, "Erro de conexão. Verifique sua internet."
+            else:
+                return None, f"Erro inesperado: {str(e)}"
+
+    return None, "Não consegui gerar o conteúdo após 3 tentativas. Tente novamente."
 
 
 def _parse_json_response(text: str) -> dict | None:
